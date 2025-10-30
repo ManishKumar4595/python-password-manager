@@ -1,23 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Register | Password Manager</title>
-</head>
-<body>
-  <h2>Create Account</h2>
-  <form method="POST">
-    <input type="text" name="name" placeholder="Full Name" required><br>
-    <input type="email" name="email" placeholder="Email" required><br>
-    <input type="password" name="password" placeholder="Password" required><br>
-    <button type="submit">Register</button>
-  </form>
-  <p><a href="{{ url_for('login') }}">Already have an account? Login</a></p>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <p><strong>{{ category }}</strong>: {{ message }}</p>
-    {% endfor %}
-  {% endif %}
-  {% endwith %}
-</body>
-</html>
+  <meta charset="UTF-8" />
+  <title>Sign Up | Password Manager</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background-color: #e6e9ee;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .register-box {
+      background-color: #2e3b4e;
+      width: 60%;
+      max-width: 600px;
+      border-radius: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      padding: 50px;
+      color: #00bfa6;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 40px;
+      margin-bott
