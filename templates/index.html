@@ -1,20 +1,201 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Dashboard | Password Manager</title>
+  <style>
+    body {
+      background-color: #e6e9ee;
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .navbar {
+      background-color: #2e3b4e;
+      color: #00bfa6;
+      padding: 20px;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .container {
+      width: 80%;
+      margin: 40px auto;
+      background-color: #2e3b4e;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      color: #00bfa6;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 30px;
+    }
+
+    form {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .input-group {
+      flex: 1 1 45%;
+      margin: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #00bfa6;
+    }
+
+    input {
+      padding: 12px;
+      border: none;
+      border-bottom: 2px solid #00bfa6;
+      background: transparent;
+      color: white;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input::placeholder {
+      color: #ccc;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    button {
+      padding: 12px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+      font-size: 16px;
+    }
+
+    .save { background-color: #00bfa6; color: white; }
+    .update { background-color: #f1c40f; }
+    .delete { background-color: #e74c3c; color: white; }
+    .search { background-color: #3498db; color: white; }
+    .logout { background-color: #ff6f61; color: white; }
+
+    button:hover {
+      opacity: 0.8;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+      background-color: #3b4b63;
+      color: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 15px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #00bfa6;
+      color: white;
+      font-size: 18px;
+    }
+
+    tr:nth-child(even) {
+      background-color: #455674;
+    }
+
+    tr:hover {
+      background-color: #56708f;
+    }
+
+    .search-bar {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .search-bar input {
+      width: 300px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #00bfa6;
+    }
+
+  </style>
 </head>
 <body>
-  <h2>Welcome, {{ user.name }}!</h2>
-  <p>Your ID: {{ user.id }}</p>
-  <p>Email: {{ user.email }}</p>
-  <p>Joined on: {{ user.joined }}</p>
-  <a href="{{ url_for('logout') }}">Logout</a>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <p><strong>{{ category }}</strong>: {{ message }}</p>
-    {% endfor %}
-  {% endif %}
-  {% endwith %}
+
+  <div class="navbar">
+    🔐 Password Manager Dashboard
+  </div>
+
+  <div class="container">
+    <h2>Manage Your Passwords</h2>
+
+    <form method="POST" action="/save">
+      <div class="input-group">
+        <label>Website</label>
+        <input type="text" name="website" placeholder="e.g. facebook.com" required>
+      </div>
+
+      <div class="input-group">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Enter username" required>
+      </div>
+
+      <div class="input-group">
+        <label>Password</label>
+        <input type="text" name="password" placeholder="Enter password" required>
+      </div>
+
+      <div class="buttons">
+        <button class="save" type="submit">💾 Save</button>
+        <button class="update" formaction="/update">🔁 Update</button>
+        <button class="delete" formaction="/delete">🗑 Delete</button>
+        <button class="logout" formaction="/logout">🚪 Logout</button>
+      </div>
+    </form>
+
+    <div class="search-bar">
+      <form method="GET" action="/search">
+        <input type="text" name="query" placeholder="Search website...">
+        <button class="search" type="submit">🔍 Search</button>
+      </form>
+    </div>
+
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Website</th>
+        <th>Username</th>
+        <th>Password</th>
+      </tr>
+      {% for item in data %}
+      <tr>
+        <td>{{ item.id }}</td>
+        <td>{{ item.website }}</td>
+        <td>{{ item.username }}</td>
+        <td>{{ item.password }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
 </body>
 </html>
