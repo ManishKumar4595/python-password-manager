@@ -1,181 +1,171 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-import sqlite3
+from flask import Flask, render_template, request, redirect, session, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
+# ---------------------------------------------------
+# 1. App Configuration
+# ---------------------------------------------------
 app = Flask(__name__)
-app.secret_key = "supersecretkey"
+app.secret_key = "supersecretkey"  # change if deploying publicly
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///password_manager.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# ---------- DATABASE SETUP ----------
-DB_FILE = "passwords.db"
+db = SQLAlchemy(app)
 
-def init_db():
-    if not os.path.exists(DB_FILE):
-        conn = sqlite3.connect(DB_FILE)
-        cur = conn.cursor()
-        cur.execute("""
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-        """)
-        cur.execute("""
-        CREATE TABLE passwords (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT,
-            website TEXT,
-            username TEXT,
-            password TEXT
-        )
-        """)
-        conn.commit()
-        conn.close()
 
-init_db()
+# ---------------------------------------------------
+# 2. Database Models
+# ---------------------------------------------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    passwords = db.relationship("Password", backref="user", lazy=True)
 
-# ---------- ROUTES ----------
 
-@app.route('/')
+class Password(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    site = db.Column(db.String(150), nullable=False)
+    username = db.Column(db.String(150), nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+
+
+# ---------------------------------------------------
+# 3. Routes
+# ---------------------------------------------------
+
+# Home → Login Page
+@app.route("/")
 def home():
-    return render_template('login.html')
+    if "user_id" in session:
+        return redirect("/dashboard")
+    return render_template("login.html")
 
-# ---------- LOGIN ----------
-@app.route('/login', methods=['POST'])
+
+# Register Page
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        email = request.form["email"]
+        password = request.form["password"]
+
+        # Check if email exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash("Email already registered. Please login.", "error")
+            return redirect("/")
+
+        # Save new user
+        hashed_pw = generate_password_hash(password)
+        new_user = User(email=email, password=hashed_pw)
+        db.session.add(new_user)
+        db.session.commit()
+        flash("Account created successfully! Please log in.", "success")
+        return redirect("/")
+
+    return render_template("register.html")
+
+
+# Login
+@app.route("/login", methods=["POST"])
 def login():
-    email = request.form['email']
-    password = request.form['password']
+    email = request.form["email"]
+    password = request.form["password"]
 
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE email=? AND password=?", (email, password))
-    user = cur.fetchone()
-    conn.close()
-
-    if user:
-        session['email'] = email
-        return redirect(url_for('dashboard'))
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(user.password, password):
+        session["user_id"] = user.id
+        session["user_email"] = user.email
+        return redirect("/dashboard")
     else:
         flash("Invalid email or password!", "error")
-        return redirect(url_for('home'))
+        return redirect("/")
 
-# ---------- REGISTER ----------
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
 
-        conn = sqlite3.connect(DB_FILE)
-        cur = conn.cursor()
-        try:
-            cur.execute("INSERT INTO users (email, password) VALUES (?, ?)", (email, password))
-            conn.commit()
-            flash("Registration successful! You can now login.", "success")
-        except sqlite3.IntegrityError:
-            flash("Email already exists!", "error")
-        conn.close()
-        return redirect(url_for('home'))
-    return render_template('register.html')
-
-# ---------- DASHBOARD ----------
-@app.route('/dashboard')
-def dashboard():
-    if 'email' not in session:
-        return redirect(url_for('home'))
-
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM passwords WHERE user_email=?", (session['email'],))
-    data = cur.fetchall()
-    conn.close()
-
-    # convert tuples into dicts for Jinja2 readability
-    data = [{'id': d[0], 'website': d[2], 'username': d[3], 'password': d[4]} for d in data]
-    return render_template('index.html', data=data)
-
-# ---------- SAVE PASSWORD ----------
-@app.route('/save', methods=['POST'])
-def save_password():
-    if 'email' not in session:
-        return redirect(url_for('home'))
-
-    website = request.form['website']
-    username = request.form['username']
-    password = request.form['password']
-
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("INSERT INTO passwords (user_email, website, username, password) VALUES (?, ?, ?, ?)",
-                (session['email'], website, username, password))
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
-# ---------- UPDATE PASSWORD ----------
-@app.route('/update', methods=['POST'])
-def update_password():
-    if 'email' not in session:
-        return redirect(url_for('home'))
-
-    website = request.form['website']
-    username = request.form['username']
-    password = request.form['password']
-
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE passwords
-        SET username=?, password=?
-        WHERE user_email=? AND website=?
-    """, (username, password, session['email'], website))
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
-# ---------- DELETE PASSWORD ----------
-@app.route('/delete', methods=['POST'])
-def delete_password():
-    if 'email' not in session:
-        return redirect(url_for('home'))
-
-    website = request.form['website']
-
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("DELETE FROM passwords WHERE user_email=? AND website=?", (session['email'], website))
-    conn.commit()
-    conn.close()
-
-    return redirect(url_for('dashboard'))
-
-# ---------- SEARCH PASSWORD ----------
-@app.route('/search')
-def search_password():
-    if 'email' not in session:
-        return redirect(url_for('home'))
-
-    query = request.args.get('query', '')
-
-    conn = sqlite3.connect(DB_FILE)
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT * FROM passwords
-        WHERE user_email=? AND website LIKE ?
-    """, (session['email'], f'%{query}%'))
-    data = cur.fetchall()
-    conn.close()
-
-    data = [{'id': d[0], 'website': d[2], 'username': d[3], 'password': d[4]} for d in data]
-    return render_template('index.html', data=data)
-
-# ---------- LOGOUT ----------
-@app.route('/logout', methods=['POST'])
+# Logout
+@app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for('home'))
+    flash("You have been logged out.", "info")
+    return redirect("/")
 
-# ---------- RUN APP ----------
-if __name__ == '__main__':
+
+# Dashboard
+@app.route("/dashboard")
+def dashboard():
+    if "user_id" not in session:
+        return redirect("/")
+
+    passwords = Password.query.filter_by(user_id=session["user_id"]).all()
+    return render_template("dashboard.html", passwords=passwords)
+
+
+# Add new password
+@app.route("/add", methods=["POST"])
+def add_password():
+    if "user_id" not in session:
+        return redirect("/")
+
+    site = request.form["site"]
+    username = request.form["username"]
+    password = request.form["password"]
+
+    new_entry = Password(site=site, username=username, password=password, user_id=session["user_id"])
+    db.session.add(new_entry)
+    db.session.commit()
+
+    flash("Password added successfully!", "success")
+    return redirect("/dashboard")
+
+
+# Delete password
+@app.route("/delete/<int:id>")
+def delete_password(id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    entry = Password.query.get_or_404(id)
+    if entry.user_id != session["user_id"]:
+        flash("Unauthorized action!", "error")
+        return redirect("/dashboard")
+
+    db.session.delete(entry)
+    db.session.commit()
+    flash("Password deleted successfully!", "info")
+    return redirect("/dashboard")
+
+
+# Edit/Update password
+@app.route("/edit/<int:id>", methods=["POST"])
+def edit_password(id):
+    if "user_id" not in session:
+        return redirect("/")
+
+    entry = Password.query.get_or_404(id)
+    if entry.user_id != session["user_id"]:
+        flash("Unauthorized action!", "error")
+        return redirect("/dashboard")
+
+    entry.site = request.form["site"]
+    entry.username = request.form["username"]
+    entry.password = request.form["password"]
+    db.session.commit()
+    flash("Password updated successfully!", "success")
+    return redirect("/dashboard")
+
+
+# ---------------------------------------------------
+# 4. Create Database Tables
+# ---------------------------------------------------
+if not os.path.exists("password_manager.db"):
+    with app.app_context():
+        db.create_all()
+
+
+# ---------------------------------------------------
+# 5. Run App
+# ---------------------------------------------------
+if __name__ == "__main__":
     app.run(debug=True)
