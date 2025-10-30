@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - Password Manager</title>
+    <style>
+        body {
+            background: #f0f0f5;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: purple;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 26px;
+            font-weight: bold;
+        }
+        .greet {
+            text-align: center;
+            color: #333;
+            margin: 15px;
+        }
+        .stats {
+            background-color: #fff;
+            width: 300px;
+            margin: 0 auto;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px gray;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .add { background-color: green; }
+        .show { background-color: blue; }
+        .logout { background-color: red; }
+        table {
+            width: 80%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: white;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+    <header>Password Manager Dashboard</header>
+
+    <div class="greet">
+        <h2>👋 Welcome, {{ user }}</h2>
+        <p>Total Passwords Saved: <strong>{{ total }}</strong></p>
+    </div>
+
+    <div class="stats">
+        <form method="POST" action="/save">
+            <input type="text" name="website" placeholder="Website" required><br>
+            <input type="text" name="username" placeholder="Username" required><br>
+            <input type="text" name="password" placeholder="Password" required><br>
+            <button class="add" type="submit">Save Password</button>
+        </form>
+
+        <form action="/showall">
+            <button class="show">Show All Passwords</button>
+        </form>
+
+        <form action="/logout">
+            <button class="logout">Logout</button>
+        </form>
+    </div>
+
+    {% if data %}
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Website</th>
+            <th>Username</th>
+            <th>Password</th>
+        </tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+            <td>{{ row[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</body>
+</html>
