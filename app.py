@@ -91,6 +91,28 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect("/")
 
+# ---------------- FORGOT PASSWORD ----------------
+@app.route('/forgot', methods=['GET', 'POST'])
+def forgot():
+    if request.method == 'POST':
+        email = request.form['email']
+        new_password = request.form['new_password']
+
+        # check if user exists
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            # update password securely
+            user.password = generate_password_hash(new_password)
+            db.session.commit()
+            flash('✅ Password reset successfully! Please log in again.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('❌ Email not found. Please register first.', 'danger')
+            return redirect(url_for('register'))
+
+    return render_template('forgot.html')
+
 
 # Dashboard
 @app.route("/dashboard")
